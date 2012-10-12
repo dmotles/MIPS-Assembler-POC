@@ -1,0 +1,64 @@
+import java_cup.runtime.Symbol;
+
+terminal EOL;
+//terminal STARTDATA;
+terminal STARTTEXT;
+terminal String LABEL;
+terminal String ROPER;
+terminal String IOPER;
+terminal String JOPER;
+//terminal ASCIIZTYPE;
+//terminal BYTETYPE;
+//terminal HALFWORDTYPE;
+//terminal WORDTYPE;
+//terminal SPACETYPE;
+//terminal String STRLITERAL;
+//terminal Integer BYTE;
+//terminal Integer HALFWORD;
+terminal Integer REG;
+terminal Integer SHAMT;
+terminal Integer IMM;
+terminal Integer JA;
+//terminal Long INT;
+
+non terminal program
+non terminal section
+non terminal textsection
+non terminal datasection
+//non terminal data
+//non terminal datastring
+//non terminal databyte
+//non terminal datahalfword
+//non terminal dataword
+//non terminal dataspace
+non terminal instruction
+non terminal rinst
+non terminal iinst
+non terminal jinst
+
+start with program
+
+program ::= datasection textsection datasection;
+
+/**
+*  DATA SECTION GRAMMAR
+*/
+
+datasection ::= ;
+
+/**
+*  TEXT SECTION
+*/
+
+textsection ::= STARTTEXT instruction;
+
+instruction ::= rinst
+                |
+                iinst
+                |
+                jinst
+                |
+                instruction
+                |
+                ;
+rinst       ::= ROPER REG REG REG

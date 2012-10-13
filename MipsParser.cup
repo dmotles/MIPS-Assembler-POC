@@ -1,12 +1,15 @@
 import java_cup.runtime.Symbol;
 
+init with {: RESULT = new AbstractSyntax(); :}
+
 terminal EOL;
 //terminal STARTDATA;
 terminal STARTTEXT;
-terminal String LABEL;
+//terminal String LABEL;
 terminal String ROPER;
-terminal String IOPER;
-terminal String JOPER;
+terminal String RSOPER;
+//terminal String IOPER;
+//terminal String JOPER;
 //terminal ASCIIZTYPE;
 //terminal BYTETYPE;
 //terminal HALFWORDTYPE;
@@ -16,29 +19,29 @@ terminal String JOPER;
 //terminal Integer BYTE;
 //terminal Integer HALFWORD;
 terminal Integer REG;
-terminal Integer SHAMT;
-terminal Integer IMM;
-terminal Integer JA;
-//terminal Long INT;
+//terminal Integer IMM;
+//terminal Integer JA;
+terminal Long INT;
 
-non terminal program
-non terminal section
-non terminal textsection
-non terminal datasection
+non terminal program;
+//non terminal section;
+non terminal textsection;
+non terminal datasection;
 //non terminal data
 //non terminal datastring
 //non terminal databyte
 //non terminal datahalfword
 //non terminal dataword
 //non terminal dataspace
-non terminal instruction
-non terminal rinst
-non terminal iinst
-non terminal jinst
+non terminal instructions;
+non terminal rinst;
+//non terminal iinst;
+//non terminal jinst;
 
-start with program
 
-program ::= datasection textsection datasection;
+start with program;
+
+program ::= datasection textsection;
 
 /**
 *  DATA SECTION GRAMMAR
@@ -50,15 +53,11 @@ datasection ::= ;
 *  TEXT SECTION
 */
 
-textsection ::= STARTTEXT instruction;
+textsection ::= STARTTEXT instructions;
 
-instruction ::= rinst
+instructions ::= instructions rinst;
+
+rinst       ::= ROPER:op REG:rd REG:rs REG:rt EOL
                 |
-                iinst
-                |
-                jinst
-                |
-                instruction
-                |
+                RSOPER:op REG:rd REG:rt INT:shamt EOL
                 ;
-rinst       ::= ROPER REG REG REG

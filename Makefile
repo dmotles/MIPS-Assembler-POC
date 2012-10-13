@@ -8,6 +8,8 @@ CLASSES = \
         Instruction.java \
         RInstruction.java \
 		InstructionCode.java \
+		DataItem.java \
+		AbstractSyntax.java \
 		MipsAssembler.java
 
 default: classes

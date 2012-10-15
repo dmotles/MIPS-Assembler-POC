@@ -2,7 +2,7 @@ public class IInstruction extends Instruction {
     private int regsource;
     private int regtarget;
 
-    public IInstruction( int line, int col, String opname, int rs, int rt, int imm )
+    public IInstruction( int line, int col, String opname, int rs, int rt, long imm )
         throws Exception
     {
         super( line, col, opname, imm );
@@ -29,6 +29,20 @@ public class IInstruction extends Instruction {
     }
 
     public boolean resolveLabel( long addr ) {
+        if( code.canHasLabel) {
+            if( code.imm == ImmProcessors.UPPER16 ) {
+                addr = addr >>> 16;
+                immediate = addr;
+            } else if( code.imm == ImmProcessors.BRANCH ) {
+                addr = addr - ( address + 4 );
+                addr = addr >> 2;
+                immediate = addr;
+            } else if( code.imm == ImmProcessors.JUMP ) {
+                immediate = addr >> 2;
+            } else {
+                immediate = addr;
+            }
+        }
         return true;
     }
 

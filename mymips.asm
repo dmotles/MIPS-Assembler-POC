@@ -1,4 +1,5 @@
 .data
+mystr: .asciiz "string"
 .text
 main:
 #derp this. is a comment

@@ -3,7 +3,7 @@ public class RInstruction extends Instruction {
     private int regtarget;
     private int regdest;
 
-    public RInstruction( int line, int col, String opname, int rs, int rt, int rd, int shamt )
+    public RInstruction( int line, int col, String opname, int rs, int rt, int rd, long shamt )
         throws Exception
     {
         super( line, col, opname, shamt );

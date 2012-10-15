@@ -14,7 +14,16 @@ public class MipsAssembler {
                 resultSymbol = mp.parse();
 
                 MipsAbstractSyntax mas = (MipsAbstractSyntax)resultSymbol.value;
-                System.out.println( mas );
+                //System.out.println( mas );
+                //System.out.println( "Resolving Labels..." );
+                mas.ResolveAllLabels();
+                //System.out.println( mas );
+                //System.out.println( "Outputting code???" );
+                System.out.println( mas.assemble() );
+
+                PrintWriter out = new PrintWriter( filename + ".out" );
+                out.print( mas.assemble() );
+                out.close();
 
             } catch (IOException e) {
                 System.err.println("ERROR: " + e.getMessage() );

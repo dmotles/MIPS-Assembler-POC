@@ -1,6 +1,6 @@
 public class JInstruction extends Instruction {
 
-    public JInstruction( int line, int col, String opname, int imm )
+    public JInstruction( int line, int col, String opname, long imm )
         throws Exception
     {
         super( line, col, opname, imm );
@@ -23,6 +23,20 @@ public class JInstruction extends Instruction {
     }
 
     public boolean resolveLabel( long addr ) {
+        if( code.canHasLabel) {
+            if( code.imm == ImmProcessors.UPPER16 ) {
+                addr = addr >>> 16;
+                immediate = addr;
+            } else if( code.imm == ImmProcessors.BRANCH ) {
+                addr = addr - ( address + 4 );
+                addr = addr >> 2;
+                immediate = addr;
+            } else if( code.imm == ImmProcessors.JUMP ) {
+                immediate = addr >> 2;
+            } else {
+                immediate = addr;
+            }
+        }
         return true;
     }
 

@@ -14,7 +14,8 @@ CLASSES = \
 		IInstruction.java \
         RInstruction.java \
 		Label.java \
-		DataItem.java \
+		DataDecl.java \
+		DataSection.java \
 		TextSection.java \
 		MipsAbstractSyntax.java \
 		MipsParser.java \

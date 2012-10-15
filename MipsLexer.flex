@@ -10,6 +10,7 @@ import java_cup.runtime.Symbol;
 
 %{
     private static final boolean DEBUG = false;
+    private StringBuffer string = new StringBuffer();
     private void error(String message) {
         System.err.println( "Error at line " + (yyline+1) +
                             ", col " + (yycolumn+1) +
@@ -17,29 +18,8 @@ import java_cup.runtime.Symbol;
     }
 
     private void debugSymbols( int t, int l, int c, Object o ) {
-        String str;
-        switch ( t ) {
-   case 13: str = "IMEMOPER"; break;
-   case 16: str = "ISINGREGOP"; break;
-   case 8: str = "RPAREN"; break;
-   case 6: str = "STARTTEXT"; break;
-   case 17: str = "REG"; break;
-   case 10: str = "ROPER"; break;
-   case 7: str = "LPAREN"; break;
-   case 4: str = "COLON"; break;
-   case 2: str = "EOL"; break;
-   case 3: str = "COMMA"; break;
-   case 14: str = "ILABELOPER"; break;
-   case 0: str = "EOF"; break;
-   case 15: str = "IBRANCHOP"; break;
-   case 1: str = "error"; break;
-   case 5: str = "STARTDATA"; break;
-   case 12: str = "IOPER"; break;
-   case 11: str = "RSOPER"; break;
-   case 18: str = "IMM"; break;
-   case 9: str = "LABEL"; break;
-         default: str = Integer.toString( t ); break;
-         }
+        if( DEBUG ) {
+        String str = Integer.toString( t );
 
         System.err.print( "Returning symbol:" + str );
         System.err.print( " line: " + (l+1) );
@@ -48,6 +28,7 @@ import java_cup.runtime.Symbol;
             System.err.print( " o: " + o.toString() );
         }
         System.err.println();
+        }
     }
 
     private Symbol symbol(int type) {
@@ -60,9 +41,9 @@ import java_cup.runtime.Symbol;
         return new Symbol(type, yyline, yycolumn, value);
     }
 
-    private Integer convertToValid32I( String str, int base ) {
+    private Long convertToValid32I( String str, int base ) {
         long num = Long.parseLong( str, base );
-        Integer ret = null;
+        Long ret = null;
 
         if( num > Integer.MAX_VALUE || num > 4294967295L ) {
             error( str + " cannot be represented by the word size (32-bits)." +
@@ -71,7 +52,7 @@ import java_cup.runtime.Symbol;
             error( str + " cannot be represented by the word size (32-bits)." +
                    "Minimum value allowed is " + Integer.MIN_VALUE );
         } else {
-            ret = new Integer( (int)num );
+            ret = new Long( num );
         }
 
         return ret;
@@ -89,7 +70,6 @@ import java_cup.runtime.Symbol;
     }
 %} 
 int         = 0 | -?[1-9][0-9]*
-hex         = "0x" [0-9A-Fa-f]{1,8}
 new_line    = \r|\n|\r\n|\z
 space       = [ \t\f]
 whitespace  = {new_line} | {space}
@@ -105,36 +85,50 @@ STARTTEXT   = ".text"
 STARTDATA   = ".data"
 ROPER       = add | sub | slt | and | nor
 RSOPER      = sll
+SYSCALL     = syscall
 IOPER       = addi
 IMEMOPER    = lw | sw
 IBRANCHOP   = beq | bne
 ILABELOPER  = ori
 ISINGREGOP  = lui
 JOPER       = j
+DASCIIZ     = ".asciiz"
+DBYTE       = ".byte"
+DHALFWORD   = ".halfword"
+DWORD       = ".word"
+DSPACE      = ".space"
 
+
+%state STRING
 %%
 
 <YYINITIAL> {
 {IMM}                       {
-                                Integer val = convertToValid32I( yytext(), 10 );
+                                Long val = convertToValid32I( yytext(), 10 );
                                 if( val != null ) return symbol( sym.IMM, val );
                                 else throw new Error( "Lexer failed due to bad integer value." );
                             }
 
 {HEX}                       {
-                                Integer val = convertToValid32I( yytext().substring(2), 16 );
+                                Long val = convertToValid32I( yytext().substring(2), 16 );
                                 if( val != null ) return symbol( sym.IMM, val );
                                 else throw new Error( "Lexer failed due to bad integer value." );
                             }
 
 {ROPER}                     { return symbol( sym.ROPER, yytext() ); }
 {RSOPER}                    { return symbol( sym.RSOPER, yytext() ); }
+{SYSCALL}                   { return symbol( sym.SYSCALL ); }
 {IOPER}                     { return symbol( sym.IOPER, yytext() ); }
 {IMEMOPER}                  { return symbol( sym.IMEMOPER, yytext() ); }
 {ILABELOPER}                { return symbol( sym.ILABELOPER, yytext() ); }
 {ISINGREGOP}                { return symbol( sym.ISINGREGOP, yytext() ); }
 {IBRANCHOP}                 { return symbol( sym.IBRANCHOP, yytext() ); }
 {JOPER}                     { return symbol( sym.JOPER, yytext() ); }
+{DASCIIZ}       { return symbol( sym.DASCIIZ ); }
+{DBYTE}       { return symbol( sym.DBYTE ); }
+{DHALFWORD}       { return symbol( sym.DHALFWORD ); }
+{DWORD}       { return symbol( sym.DWORD ); }
+{DSPACE}       { return symbol( sym.DSPACE ); }
 
 {REG}                       {
                                 Integer r = convertToValidReg( yytext().substring(2) ); 
@@ -146,6 +140,7 @@ JOPER       = j
 ":"                         { return symbol( sym.COLON ); }
 "("                         { return symbol( sym.LPAREN ); }
 ")"                         { return symbol( sym.RPAREN ); }
+ \"                         { string.setLength(0); yybegin(STRING); }
 {STARTTEXT}                 { return symbol( sym.STARTTEXT ); }
 {STARTDATA}                 { return symbol( sym.STARTDATA ); }
 {LABEL}                     { return symbol( sym.LABEL, yytext() ); }
@@ -153,6 +148,18 @@ JOPER       = j
 {space}                     { /* IGNORE */ if( DEBUG) System.err.println("Ignoreing Space! <" +yytext()+ ">"); }
 //{comment}                   { /* IGNORE */ System.err.println("Ignoreing Comment! <" +yytext()+ ">"); }
 
+}
+<STRING> {
+  \"                             { yybegin(YYINITIAL); 
+                                   return symbol(sym.STRLITERAL, 
+                                   string.toString()); }
+  [^\n\r\"\\]+                   { string.append( yytext() ); }
+  \\t                            { string.append('\t'); }
+  \\n                            { string.append('\n'); }
+
+  \\r                            { string.append('\r'); }
+  \\\"                           { string.append('\"'); }
+  \\                             { string.append('\\'); }
 }
 
 

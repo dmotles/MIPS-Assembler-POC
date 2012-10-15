@@ -24,6 +24,7 @@ terminal String LABEL;
 // RFormat Operators
 terminal String ROPER;
 terminal String RSOPER;
+terminal SYSCALL;
 
 // IFormat Operators
 terminal String IOPER;
@@ -43,7 +44,7 @@ terminal String STRLITERAL;
 //terminal Integer BYTE;
 //terminal Integer HALFWORD;
 terminal Integer REG;
-terminal Integer IMM;
+terminal Long IMM;
 
 /*------------------------------
             Non Terminals
@@ -64,7 +65,7 @@ non terminal DataDecl datahalfword;
 non terminal DataDecl dataword;
 non terminal DataDecl dataspace;
 non terminal ArrayList<String> strlist;
-non terminal ArrayList<Integer> immlist;
+non terminal ArrayList<Long> immlist;
 
 /**
 *  TEXT SECTION
@@ -91,40 +92,76 @@ goal            ::= mipsprogram:m
                     {:  RESULT = m; :}
                 ;
 mipsprogram     ::= datasection:ds
+                    {:  RESULT = new MipsAbstractSyntax( ds ); :}
                 | 
                 textsection:ts
                     {:  RESULT = new MipsAbstractSyntax( ts ); :}
                 |
                 datasection:ds textsection:ts
+                    {:  RESULT = new MipsAbstractSyntax( ds, ts ); :}
                 |
                 textsection:ts datasection:ds
-                    {:  RESULT = new MipsAbstractSyntax( ts ); :}
+                    {:  RESULT = new MipsAbstractSyntax( ds, ts ); :}
                 ;
 
 /**
 *  DATA SECTION GRAMMAR
 */
 
-datasection     ::= STARTDATA EOL data:fulld ;
-
-data            ::= data:ds datadecl:dc | datadecl:dc ;
-datadecl        ::= dataasciiz:d EOL
-                |
-                databyte:d EOL
-                |
-                datahalfword:d EOL
-                |
-                dataword:d EOL
-                |
-                dataspace:d EOL
+datasection     ::= STARTDATA EOL data:fulld
+                    {: RESULT = fulld; :}
                 ;
-dataasciiz      ::= LABEL:l COLON DASCIIZ strlist:s ;
-databyte        ::= LABEL:l COLON DBYTE immlist:list ;
-datahalfword    ::= LABEL:l COLON DHALFWORD immlist:list ;
-dataword        ::= LABEL:l COLON DWORD immlist:list ;
-dataspace       ::= LABEL:l COLON DSPACE IMM:i ;
-strlist         ::= strlist:s COMMA STRLITERAL | STRLITERAL ;
-immlist         ::= immlist:list COMMA IMM:i | IMM:i ;
+
+data            ::= data:ds datadecl:dc
+                    {:
+                        ds.addData( dc );
+                        RESULT = ds;
+                    :}
+                |
+                datadecl:dc
+                    {:
+                        DataSection ds = new DataSection();
+                        ds.addData( dc );
+                        RESULT = ds;
+                    :}
+                ;
+datadecl        ::= dataasciiz:d EOL {: RESULT = d; :}
+                |
+                databyte:d EOL {: RESULT = d; :}
+                |
+                datahalfword:d EOL {: RESULT = d; :}
+                |
+                dataword:d EOL {: RESULT = d; :}
+                |
+                dataspace:d EOL {: RESULT = d; :}
+                ;
+dataasciiz      ::= LABEL:l COLON DASCIIZ strlist:s
+                    {: RESULT = new DataDecl( lleft, lright, l, s, true ); :}
+                ;
+databyte        ::= LABEL:l COLON DBYTE immlist:list
+                    {: RESULT = new DataDecl( lleft, lright, l, list, 8 ); :}
+                ;
+datahalfword    ::= LABEL:l COLON DHALFWORD immlist:list
+                    {: RESULT = new DataDecl( lleft, lright, l, list, 16 ); :}
+                ;
+dataword        ::= LABEL:l COLON DWORD immlist:list
+                    {: RESULT = new DataDecl( lleft, lright, l, list, 32 ); :}
+                ;
+dataspace       ::= LABEL:l COLON DSPACE IMM:i
+                    {: RESULT = new DataDecl( lleft, lright, l, (int)i.longValue() ); :}
+                ;
+strlist         ::= strlist:list COMMA STRLITERAL:s
+                    {: list.add(s); RESULT = list; :}
+                |
+                STRLITERAL:s
+                    {: ArrayList<String> l = new ArrayList<String>(); l.add(s); RESULT = l; :}
+                ;
+immlist         ::= immlist:list COMMA IMM:i
+                    {: list.add(i); RESULT = list; :}
+                |
+                IMM:i
+                    {: ArrayList<Long> l = new ArrayList<Long>(); l.add(i); RESULT = l; :}
+                ;
 
 /**
 *  TEXT SECTION GRAMMAR
@@ -212,7 +249,7 @@ iinst           ::= IOPER:op REG:rt COMMA REG:rs COMMA IMM:imm
                                                    op.toUpperCase(),
                                                    rs.intValue(),
                                                    rt.intValue(),
-                                                   imm.intValue() );
+                                                   imm.longValue() );
                     :}
                 |
                 ILABELOPER:op REG:rt COMMA REG:rs COMMA imm_or_label:iol
@@ -224,13 +261,13 @@ iinst           ::= IOPER:op REG:rt COMMA REG:rs COMMA IMM:imm
                                                        rs.intValue(),
                                                        rt.intValue(),
                                                        (String)iol );
-                        } else if ( iol instanceof Integer ) {
+                        } else if ( iol instanceof Long ) {
                             RESULT = new IInstruction( opleft,
                                                        opright,
                                                        op.toUpperCase(),
                                                        rs.intValue(),
                                                        rt.intValue(),
-                                                       ((Integer)iol).intValue() );
+                                                       ((Long)iol).longValue() );
                         }
                     :}
                 |
@@ -243,13 +280,13 @@ iinst           ::= IOPER:op REG:rt COMMA REG:rs COMMA IMM:imm
                                                        rs.intValue(),
                                                        rt.intValue(),
                                                        (String)iol );
-                        } else if ( iol instanceof Integer ) {
+                        } else if ( iol instanceof Long ) {
                             RESULT = new IInstruction( opleft,
                                                        opright,
                                                        op.toUpperCase(),
                                                        rs.intValue(),
                                                        rt.intValue(),
-                                                       ((Integer)iol).intValue() );
+                                                       ((Long)iol).longValue() );
                         }
                         if( RESULT == null ) System.err.println( "RESULT NOT SET" );
                     :}
@@ -261,7 +298,7 @@ iinst           ::= IOPER:op REG:rt COMMA REG:rs COMMA IMM:imm
                                                    op.toUpperCase(),
                                                    rs.intValue(),
                                                    rt.intValue(),
-                                                   imm.intValue() );
+                                                   imm.longValue() );
                     :}
                 |
                 ISINGREGOP:op REG:rt COMMA imm_or_label:iol
@@ -273,13 +310,13 @@ iinst           ::= IOPER:op REG:rt COMMA REG:rs COMMA IMM:imm
                                                        0,
                                                        rt.intValue(),
                                                        (String)iol );
-                        } else if ( iol instanceof Integer ) {
+                        } else if ( iol instanceof Long ) {
                             RESULT = new IInstruction( opleft,
                                                        opright,
                                                        op.toUpperCase(),
                                                        0,
                                                        rt.intValue(),
-                                                       ((Integer)iol).intValue() );
+                                                       ((Long)iol).longValue() );
                         }
                     :}
                 ;
@@ -303,8 +340,19 @@ rinst           ::= ROPER:op REG:rd COMMA REG:rs COMMA REG:rt
                                                    0,
                                                    rt.intValue(),
                                                    rd.intValue(),
-                                                   shamt.intValue() );
+                                                   shamt.longValue() );
                     :}
+                |
+                SYSCALL:op
+                    {:
+                        RESULT = new RInstruction( opleft,
+                                                   opright,
+                                                   "SYSCALL",
+                                                   0,
+                                                   0,
+                                                   0,
+                                                   0 );
+                   :}
                 ;
 jinst           ::= JOPER:op imm_or_label:iol
                     {:
@@ -313,11 +361,11 @@ jinst           ::= JOPER:op imm_or_label:iol
                                                        opright,
                                                        op.toUpperCase(),
                                                        (String)iol );
-                        } else if ( iol instanceof Integer ) {
+                        } else if ( iol instanceof Long ) {
                             RESULT = new JInstruction( opleft,
                                                        opright,
                                                        op.toUpperCase(),
-                                                       ((Integer)iol).intValue() );
+                                                       ((Long)iol).longValue() );
                         }
                     :}
                 ;

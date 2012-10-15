@@ -1,0 +1,67 @@
+#!/bin/sh
+
+JAVACUP=java-cup-11a.jar
+JC=
+ASSEMBLEDIR=`dirname $0`
+INPUTFILE=
+
+usage() {
+       echo 'Usage: MipsAssembler <options> <Source File>'
+       echo '   Options:'
+       echo '   -j [path] path to java cup (optional)'
+       echo '   -a [path] path to MIPS file to assemble (flag not needed if on end)'
+}
+
+args=`getopt a:j: $*`
+if [ $? != 0 ]
+then
+    usage
+    exit 2
+fi
+set -- $args
+for i
+do
+       case "$i"
+       in
+               -j)
+                       JAVACUP=$2
+                       shift;
+                       shift;;
+               -a)
+                       INPUTFILE=$2
+                       shift;
+                       shift;;
+               --)
+                       shift; break;;
+       esac
+done
+
+
+
+if [ -z "$INPUTFILE" ]; then
+    if [ -z "$1" ]; then
+        echo "No input file passed."
+        usage
+        exit 2
+    fi
+    INPUTFILE=$1
+fi
+
+cd $ASSEMBLEDIR
+
+if [ -e MipsAssembler.class ]; then
+    if [ ! -e $JAVACUP ]; then
+        echo "Error: java_cup classpath not found. Assembler will fail to start."
+        usage
+        exit 2
+    fi
+    java -cp ".:$JAVACUP" MipsAssembler $INPUTFILE
+    ret=$?
+    if [ $ret == 10 ]; then
+        usage
+        exit $ret;
+    fi
+else
+    echo "MipsAssembler class file is missing! Unable to run program." >&2
+    exit 9
+fi

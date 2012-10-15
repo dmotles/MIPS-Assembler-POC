@@ -1,63 +1,323 @@
 import java_cup.runtime.Symbol;
+import java.util.*;
 
-init with {: RESULT = new AbstractSyntax(); :}
+parser code {:
+    public void syntax_error( Symbol cur_token ) {
+        String msg  = "Syntax Error at line: " + (cur_token.left+1); 
+        msg         += " col: " + (cur_token.right+1) + ".";
+        report_error( msg, null );
+    }
+    public void unrecovered_syntax_error( Symbol cur_token ) throws java.lang.Exception {
+        super.unrecovered_syntax_error( cur_token );
+    }
+:}
 
 terminal EOL;
-//terminal STARTDATA;
+terminal COMMA;
+terminal COLON;
+terminal STARTDATA;
 terminal STARTTEXT;
-//terminal String LABEL;
+terminal LPAREN;
+terminal RPAREN;
+terminal String LABEL;
+
+// RFormat Operators
 terminal String ROPER;
 terminal String RSOPER;
-//terminal String IOPER;
-//terminal String JOPER;
-//terminal ASCIIZTYPE;
-//terminal BYTETYPE;
-//terminal HALFWORDTYPE;
-//terminal WORDTYPE;
-//terminal SPACETYPE;
-//terminal String STRLITERAL;
+
+// IFormat Operators
+terminal String IOPER;
+terminal String IMEMOPER;
+terminal String ILABELOPER;
+terminal String IBRANCHOP;
+terminal String ISINGREGOP;
+
+// J format operators
+terminal String JOPER;
+terminal DASCIIZ;
+terminal DBYTE;
+terminal DHALFWORD;
+terminal DWORD;
+terminal DSPACE;
+terminal String STRLITERAL;
 //terminal Integer BYTE;
 //terminal Integer HALFWORD;
 terminal Integer REG;
-//terminal Integer IMM;
-//terminal Integer JA;
-terminal Long INT;
+terminal Integer IMM;
 
-non terminal program;
+/*------------------------------
+            Non Terminals
+------------------------------*/
+
+/**
+*  WHOLE MIPS PROGRAM
+*/
+non terminal goal;
+non terminal MipsAbstractSyntax mipsprogram;
 //non terminal section;
-non terminal textsection;
-non terminal datasection;
-//non terminal data
-//non terminal datastring
-//non terminal databyte
-//non terminal datahalfword
-//non terminal dataword
-//non terminal dataspace
-non terminal instructions;
-non terminal rinst;
-//non terminal iinst;
-//non terminal jinst;
+non terminal DataSection datasection;
+non terminal DataSection data;
+non terminal DataDecl datadecl;
+non terminal DataDecl dataasciiz;
+non terminal DataDecl databyte;
+non terminal DataDecl datahalfword;
+non terminal DataDecl dataword;
+non terminal DataDecl dataspace;
+non terminal ArrayList<String> strlist;
+non terminal ArrayList<Integer> immlist;
+
+/**
+*  TEXT SECTION
+*/
+non terminal TextSection textsection;
+non terminal TextSection textdata;
 
 
-start with program;
+// instructions
+//non terminal ArrayList<Instruction> instlist;
+non terminal Instruction mipsinst;
+non terminal RInstruction rinst;
+non terminal IInstruction iinst;
+non terminal JInstruction jinst;
 
-program ::= datasection textsection;
+// Parts
+non terminal Label labeldecl;
+non terminal Object imm_or_label;
+
+
+start with goal;
+
+goal            ::= mipsprogram:m
+                    {:  RESULT = m; :}
+                ;
+mipsprogram     ::= datasection:ds
+                | 
+                textsection:ts
+                    {:  RESULT = new MipsAbstractSyntax( ts ); :}
+                |
+                datasection:ds textsection:ts
+                |
+                textsection:ts datasection:ds
+                    {:  RESULT = new MipsAbstractSyntax( ts ); :}
+                ;
 
 /**
 *  DATA SECTION GRAMMAR
 */
 
-datasection ::= ;
+datasection     ::= STARTDATA EOL data:fulld ;
+
+data            ::= data:ds datadecl:dc | datadecl:dc ;
+datadecl        ::= dataasciiz:d EOL
+                |
+                databyte:d EOL
+                |
+                datahalfword:d EOL
+                |
+                dataword:d EOL
+                |
+                dataspace:d EOL
+                ;
+dataasciiz      ::= LABEL:l COLON DASCIIZ strlist:s ;
+databyte        ::= LABEL:l COLON DBYTE immlist:list ;
+datahalfword    ::= LABEL:l COLON DHALFWORD immlist:list ;
+dataword        ::= LABEL:l COLON DWORD immlist:list ;
+dataspace       ::= LABEL:l COLON DSPACE IMM:i ;
+strlist         ::= strlist:s COMMA STRLITERAL | STRLITERAL ;
+immlist         ::= immlist:list COMMA IMM:i | IMM:i ;
 
 /**
-*  TEXT SECTION
+*  TEXT SECTION GRAMMAR
 */
 
-textsection ::= STARTTEXT instructions;
+textsection     ::= STARTTEXT EOL textdata:tdfull
+                    {: RESULT = tdfull; :}
+                ;
 
-instructions ::= instructions rinst;
-
-rinst       ::= ROPER:op REG:rd REG:rs REG:rt EOL
+textdata        ::= textdata:td mipsinst:i
+                    {:  td.addInstruction( i );
+                        RESULT = td;
+                    :}
                 |
-                RSOPER:op REG:rd REG:rt INT:shamt EOL
+                textdata:td labeldecl:l
+                    {:  td.addLabel( l );
+                        RESULT = td;
+                    :}
+                |
+                textdata:td labeldecl:l EOL
+                    {:  td.addLabel( l );
+                        RESULT = td;
+                    :}
+                |
+                mipsinst:i
+                    {:  TextSection t = new TextSection(); 
+                        t.addInstruction( i );
+                        RESULT = t;
+                    :}
+                |
+                labeldecl:l
+                    {:  TextSection t = new TextSection(); 
+                        t.addLabel( l );
+                        RESULT = t;
+                    :}
+                    |
+                labeldecl:l EOL
+                    {:  TextSection t = new TextSection(); 
+                        t.addLabel( l );
+                        RESULT = t;
+                    :}
+                ;
+
+labeldecl       ::= LABEL:l COLON
+                    {:
+                        RESULT = new Label( lleft, lright, l, 0 );
+                    :}
+                ;
+/*instlist        ::= instlist:list EOL mipsinst:i    // ArrayList<Instruction>
+                    {:
+                        list.add( i );
+                        RESULT = list;
+                    :}
+                |
+                mipsinst:i
+                    {:
+                        ArrayList<Instruction> list = new ArrayList<Instruction>();
+                        list.add( i );
+                        RESULT = list;
+                    :}
+                ;*/
+
+mipsinst        ::= rinst:ri EOL             // Instruction
+                    {: RESULT = ri; :}
+                |
+                iinst:ii EOL
+                    {: RESULT = ii; :}
+                |
+                jinst:ji EOL
+                    {: RESULT = ji; :}
+                ;
+
+
+imm_or_label    ::= IMM:imm
+                    {: RESULT = imm; :}
+                |
+                LABEL:label
+                    {: RESULT = label; :}
+                ;
+
+iinst           ::= IOPER:op REG:rt COMMA REG:rs COMMA IMM:imm
+                    {:
+                        RESULT = new IInstruction( opleft,
+                                                   opright,
+                                                   op.toUpperCase(),
+                                                   rs.intValue(),
+                                                   rt.intValue(),
+                                                   imm.intValue() );
+                    :}
+                |
+                ILABELOPER:op REG:rt COMMA REG:rs COMMA imm_or_label:iol
+                    {:
+                        if( iol instanceof String ) {
+                            RESULT = new IInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       rs.intValue(),
+                                                       rt.intValue(),
+                                                       (String)iol );
+                        } else if ( iol instanceof Integer ) {
+                            RESULT = new IInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       rs.intValue(),
+                                                       rt.intValue(),
+                                                       ((Integer)iol).intValue() );
+                        }
+                    :}
+                |
+                IBRANCHOP:op REG:rs COMMA REG:rt COMMA imm_or_label:iol
+                    {:
+                        if( iol instanceof String ) {
+                            RESULT = new IInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       rs.intValue(),
+                                                       rt.intValue(),
+                                                       (String)iol );
+                        } else if ( iol instanceof Integer ) {
+                            RESULT = new IInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       rs.intValue(),
+                                                       rt.intValue(),
+                                                       ((Integer)iol).intValue() );
+                        }
+                        if( RESULT == null ) System.err.println( "RESULT NOT SET" );
+                    :}
+                |
+                IMEMOPER:op REG:rt COMMA IMM:imm LPAREN REG:rs RPAREN
+                    {:
+                        RESULT = new IInstruction( opleft,
+                                                   opright,
+                                                   op.toUpperCase(),
+                                                   rs.intValue(),
+                                                   rt.intValue(),
+                                                   imm.intValue() );
+                    :}
+                |
+                ISINGREGOP:op REG:rt COMMA imm_or_label:iol
+                    {:
+                        if( iol instanceof String ) {
+                            RESULT = new IInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       0,
+                                                       rt.intValue(),
+                                                       (String)iol );
+                        } else if ( iol instanceof Integer ) {
+                            RESULT = new IInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       0,
+                                                       rt.intValue(),
+                                                       ((Integer)iol).intValue() );
+                        }
+                    :}
+                ;
+
+rinst           ::= ROPER:op REG:rd COMMA REG:rs COMMA REG:rt
+                    {:
+                        RESULT = new RInstruction( opleft,
+                                                   opright,
+                                                   op.toUpperCase(),
+                                                   rs.intValue(),
+                                                   rt.intValue(),
+                                                   rd.intValue(),
+                                                   0 );
+                    :}
+                |
+                RSOPER:op REG:rd COMMA REG:rt COMMA IMM:shamt
+                    {:
+                        RESULT = new RInstruction( opleft,
+                                                   opright,
+                                                   op.toUpperCase(),
+                                                   0,
+                                                   rt.intValue(),
+                                                   rd.intValue(),
+                                                   shamt.intValue() );
+                    :}
+                ;
+jinst           ::= JOPER:op imm_or_label:iol
+                    {:
+                        if( iol instanceof String ) {
+                            RESULT = new JInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       (String)iol );
+                        } else if ( iol instanceof Integer ) {
+                            RESULT = new JInstruction( opleft,
+                                                       opright,
+                                                       op.toUpperCase(),
+                                                       ((Integer)iol).intValue() );
+                        }
+                    :}
                 ;

@@ -1,0 +1,25 @@
+# MIPS Assembler
+
+This uses a lexer generator (JFlex) and an lalr parser generator JavaCup to make a rudimentary Java assembler.
+The assembler does not produce binaries, rather it produces ouput for a [ MIPS cpu emulator ](https://github.com/alexbeutel/mips-emulator), also written in java.
+
+## Supported Versions of JFlex and JavaCup
+* JavaCup 11a [DOWNLOAD](http://www2.cs.tum.edu/projects/cup/java-cup-11a.jar)
+* JFlex 1.4.3 [DOWNLOAD](http://jflex.de/jflex-1.4.3.tar.gz)
+
+### Known issues
+Possible issues where file does not have a newline at end of file. This is due to issues with the grammar.
+
+## Build
+With jflex in your PATH, and java-cup-11a.jar inside your CWD, run "make". NOTE: classpath for java-cup-11x.jar may need to be adjusted. It is hardcoded insider the Makefile.
+
+## Usage
+
+````
+Usage: ./MipsAssembler <options> <Source File>
+   Options:
+   -j [path] path to java cup (optional)
+   -a [path] path to MIPS file to assemble (flag not needed if on end)
+```
+
+output file will be sourcefilename.out
